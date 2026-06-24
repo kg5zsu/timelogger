@@ -15,7 +15,7 @@ def test_full_flow_config_rules_db_export():
         os.makedirs(cfg_dir)
         config_path = os.path.join(cfg_dir, "config.json")
         rules_path = os.path.join(cfg_dir, "rules.json")
-        db_path = os.path.join(tmp, "usage.db")
+        db_path = os.path.join(cfg_dir, "usage.db")
 
         with open(config_path, "w") as f:
             json.dump({"poll_interval": 1, "db_path": db_path}, f)
@@ -30,7 +30,9 @@ def test_full_flow_config_rules_db_export():
             json.dump(rules, f)
 
         orig_cfg = os.environ.get("XDG_CONFIG_HOME")
+        orig_data = os.environ.get("XDG_DATA_HOME")
         os.environ["XDG_CONFIG_HOME"] = tmp
+        os.environ["XDG_DATA_HOME"] = tmp
         try:
             cfg = load_config()
             assert cfg["poll_interval"] == 1
@@ -70,3 +72,7 @@ def test_full_flow_config_rules_db_export():
                 os.environ.pop("XDG_CONFIG_HOME", None)
             else:
                 os.environ["XDG_CONFIG_HOME"] = orig_cfg
+            if orig_data is None:
+                os.environ.pop("XDG_DATA_HOME", None)
+            else:
+                os.environ["XDG_DATA_HOME"] = orig_data

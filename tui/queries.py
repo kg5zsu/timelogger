@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
@@ -6,7 +7,7 @@ DEFAULT_DB = "~/.local/share/timelogger/usage.db"
 
 
 def _connect(db_path):
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(os.path.expanduser(db_path))
     conn.row_factory = sqlite3.Row
     return conn
 

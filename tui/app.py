@@ -70,6 +70,8 @@ class CategoryEditScreen(Screen):
     CSS = """
     Screen {
         align: center middle;
+        width: 100%;
+        height: 100%;
     }
     #dialog {
         width: 50;
@@ -110,6 +112,71 @@ class CategoryEditScreen(Screen):
             self.dismiss(None)
 
 
+class AppBreakdownScreen(Screen):
+    def __init__(self, day, category, db_path):
+        super().__init__()
+        self.day_str = day
+        self.category_name = category
+        self.db_path = db_path
+
+    CSS = """
+    Screen {
+        align: center middle;
+        width: 100%;
+        height: 100%;
+    }
+    #container {
+        width: 80%;
+        height: 80%;
+        border: thick $primary;
+        background: $surface;
+    }
+    Label {
+        margin: 1;
+        text-align: center;
+    }
+    DataTable {
+        height: 1fr;
+    }
+    #btn-row {
+        height: auto;
+        align: center middle;
+    }
+    """
+
+    def compose(self):
+        with Vertical(id="container"):
+            yield Label(f"[bold]{self.category_name}[/] on {self.day_str}")
+            yield DataTable(id="breakdown-table")
+            with Horizontal(id="btn-row"):
+                yield Button("Close", id="close-btn", variant="primary")
+
+    def on_mount(self):
+        day_start = f"{self.day_str}T00:00:00+00:00"
+        day_end = f"{self.day_str}T23:59:59+00:00"
+        all_rows = summary_by_app(
+            self.db_path, start=day_start, end=day_end
+        )
+        rows = [r for r in all_rows
+                if r["category"] == self.category_name]
+
+        table = self.query_one("#breakdown-table", DataTable)
+        table.add_columns("Process", "Window", "Time (h)", "Sessions")
+        for r in rows:
+            hours = round(r["total_seconds"] / 3600, 2) if r.get(
+                "total_seconds") else 0
+            table.add_row(
+                r["process"] or "",
+                r["window_title"] or "",
+                str(hours),
+                str(r["sessions"]),
+            )
+
+    def on_button_pressed(self, event):
+        if event.button.id == "close-btn":
+            self.dismiss(None)
+
+
 class TimeloggerApp(App):
     TITLE = "timelogger"
 
@@ -135,7 +202,13 @@ class TimeloggerApp(App):
     Button {
         margin: 0 1;
     }
+    TabbedContent {
+        height: 1fr;
+    }
     DataTable {
+        height: 1fr;
+    }
+    #log-view {
         height: 1fr;
     }
     #custom-range {
@@ -148,6 +221,12 @@ class TimeloggerApp(App):
         width: 20;
     }
     #rule-inputs, #rule-actions {
+        height: auto;
+        margin: 0 1;
+        padding: 0 1;
+        align: center middle;
+    }
+    #app-actions, #daily-actions {
         height: auto;
         margin: 0 1;
         padding: 0 1;
@@ -173,7 +252,7 @@ class TimeloggerApp(App):
                 yield Label("To:")
                 yield Input(placeholder="2026-06-24", id="end-input")
             yield Button("Refresh", id="refresh-btn")
-        with TabbedContent(initial="tab-categories"):
+        with TabbedContent(initial="tab-apps"):
             with TabPane("Categories", id="tab-categories"):
                 yield DataTable(id="cat-table")
                 with Horizontal(id="rule-inputs"):
@@ -189,8 +268,14 @@ class TimeloggerApp(App):
                     yield Button("Reload", id="rule-reload-btn")
             with TabPane("Apps", id="tab-apps"):
                 yield DataTable(id="app-table")
+                with Horizontal(id="app-actions"):
+                    yield Button("Set Category", id="app-cat-btn",
+                                variant="primary")
             with TabPane("Daily", id="tab-daily"):
                 yield DataTable(id="daily-table")
+                with Horizontal(id="daily-actions"):
+                    yield Button("Show Apps", id="daily-apps-btn",
+                                variant="primary")
             with TabPane("Log", id="tab-log"):
                 yield RichLog(id="log-view", highlight=True, markup=True)
         yield Footer()
@@ -218,6 +303,10 @@ class TimeloggerApp(App):
         elif btn == "rule-reload-btn":
             self._load_categories()
             self._load_apps()
+        elif btn == "app-cat-btn":
+            self._edit_selected_app()
+        elif btn == "daily-apps-btn":
+            self._show_daily_apps()
 
     def on_input_submitted(self, event: Input.Submitted):
         if event.input.id in ("start-input", "end-input"):
@@ -273,23 +362,22 @@ class TimeloggerApp(App):
         self._load_log()
 
     def _load_categories(self):
-        start, end = self._compute_range()
         table = self.query_one("#cat-table", DataTable)
-        table.clear()
-        table.add_columns("Process Pattern", "Category", "Actions")
+        table.clear(columns=True)
+        table.add_columns("Process Pattern", "Category")
         self._cat_rules = _load_rules()
         for i, r in enumerate(self._cat_rules):
             proc = r.get("process", ".*")
             cat = r.get("category", "uncategorized")
-            table.add_row(proc, cat, "[edit]", key=str(i))
+            table.add_row(proc, cat, key=str(i))
 
     def _load_apps(self):
         start, end = self._compute_range()
         rows = summary_by_app(self.db_path, start=start, end=end)
         table = self.query_one("#app-table", DataTable)
-        table.clear()
+        table.clear(columns=True)
         table.add_columns("Process", "Window", "Category", "Time (h)",
-                          "Sessions", "Actions")
+                          "Sessions")
         self._app_data = list(rows)
         for i, r in enumerate(self._app_data):
             hours = round(r["total_seconds"] / 3600, 2) if r.get(
@@ -300,7 +388,6 @@ class TimeloggerApp(App):
                 r["category"] or "uncategorized",
                 str(hours),
                 str(r["sessions"]),
-                "[edit]",
                 key=str(i),
             )
 
@@ -308,7 +395,7 @@ class TimeloggerApp(App):
         start, end = self._compute_range()
         rows = daily_breakdown(self.db_path, start=start, end=end)
         table = self.query_one("#daily-table", DataTable)
-        table.clear()
+        table.clear(columns=True)
         table.add_columns("Day", "Category", "Time (h)")
         for r in rows:
             hours = round(r["total_seconds"] / 3600, 2) if r.get(
@@ -328,6 +415,33 @@ class TimeloggerApp(App):
                 f"  {r['start_ts'][:19]} | {r['process']:<15} "
                 f"| {r['category']:<12} | {mins}min"
             )
+
+    def _show_daily_apps(self):
+        table = self.query_one("#daily-table", DataTable)
+        row_idx = table.cursor_row
+        if row_idx is None:
+            return
+        start, end = self._compute_range()
+        rows = daily_breakdown(self.db_path, start=start, end=end)
+        if row_idx >= len(rows):
+            return
+        day = rows[row_idx]["day"]
+        cat = rows[row_idx]["category"]
+        self.push_screen(AppBreakdownScreen(day, cat, self.db_path))
+
+    def _edit_selected_app(self):
+        table = self.query_one("#app-table", DataTable)
+        row_idx = table.cursor_row
+        if row_idx is None or row_idx >= len(self._app_data):
+            return
+        row = self._app_data[row_idx]
+        self.push_screen(
+            CategoryEditScreen(
+                f"Change category for [bold]{row['process']}[/]:",
+                row["category"] or "uncategorized",
+            ),
+            self._on_app_category_edited,
+        )
 
     def _add_rule(self):
         proc_input = self.query_one("#rule-process", Input)
@@ -361,18 +475,8 @@ class TimeloggerApp(App):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected):
         table = event.data_table
-        if table.id == "app-table":
-            row_idx = table.cursor_row
-            if row_idx is None or row_idx >= len(self._app_data):
-                return
-            row = self._app_data[row_idx]
-            self.push_screen(
-                CategoryEditScreen(
-                    f"Change category for [bold]{row['process']}[/]:",
-                    row["category"] or "uncategorized",
-                ),
-                self._on_app_category_edited,
-            )
+        if table.id == "daily-table":
+            self._show_daily_apps()
         elif table.id == "cat-table":
             row_idx = table.cursor_row
             if row_idx is None or row_idx >= len(self._cat_rules):
@@ -380,7 +484,8 @@ class TimeloggerApp(App):
             rule = self._cat_rules[row_idx]
             self.push_screen(
                 CategoryEditScreen(
-                    f"Edit rule for [bold]{rule.get('process', '.*')}[/]:",
+                    f"Edit rule for "
+                    f"[bold]{rule.get('process', '.*')}[/]:",
                     rule.get("category", "uncategorized"),
                 ),
                 self._on_rule_category_edited,
@@ -389,7 +494,6 @@ class TimeloggerApp(App):
     def _on_app_category_edited(self, new_cat):
         if new_cat is None:
             return
-        # We need the row data; retrieve it from the hook context
         table = self.query_one("#app-table", DataTable)
         row_idx = table.cursor_row
         if row_idx is None or row_idx >= len(self._app_data):
@@ -421,6 +525,7 @@ class TimeloggerApp(App):
         self._load_apps()
 
     def _set_category_for_process(self, process_name, new_category):
+        import sqlite3
         escaped = f".*{re.escape(process_name)}.*"
         rules = _load_rules()
         for rule in rules:
@@ -429,7 +534,22 @@ class TimeloggerApp(App):
                 if rule["category"] != new_category:
                     rule["category"] = new_category
                     _save_rules(rules)
-                return
-        rules.append({"pattern": ".*", "process": escaped,
-                      "category": new_category})
-        _save_rules(rules)
+                break
+        else:
+            rules.append({"pattern": ".*", "process": escaped,
+                          "category": new_category})
+            _save_rules(rules)
+        db_path = self.db_path or os.path.expanduser(
+            "~/.local/share/timelogger/usage.db"
+        )
+        try:
+            conn = sqlite3.connect(db_path)
+            conn.execute(
+                "UPDATE usage SET category = ? "
+                "WHERE process = ? AND category != ?",
+                (new_category, process_name, new_category),
+            )
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
