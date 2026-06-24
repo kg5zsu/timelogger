@@ -21,6 +21,7 @@ from textual.widgets import (
 
 from .queries import (
     daily_breakdown,
+    daily_total,
     raw_entries,
     summary_by_app,
     summary_by_category,
@@ -207,6 +208,7 @@ class TimeloggerApp(App):
     }
     DataTable {
         height: 1fr;
+        width: 1fr;
     }
     #log-view {
         height: 1fr;
@@ -276,6 +278,8 @@ class TimeloggerApp(App):
                 with Horizontal(id="daily-actions"):
                     yield Button("Show Apps", id="daily-apps-btn",
                                 variant="primary")
+            with TabPane("Totals", id="tab-totals"):
+                yield DataTable(id="totals-table")
             with TabPane("Log", id="tab-log"):
                 yield RichLog(id="log-view", highlight=True, markup=True)
         yield Footer()
@@ -359,12 +363,14 @@ class TimeloggerApp(App):
         self._load_categories()
         self._load_apps()
         self._load_daily()
+        self._load_totals()
         self._load_log()
 
     def _load_categories(self):
         table = self.query_one("#cat-table", DataTable)
         table.clear(columns=True)
-        table.add_columns("Process Pattern", "Category")
+        table.add_column("Process Pattern", width=20)
+        table.add_column("Category", width=16)
         self._cat_rules = _load_rules()
         for i, r in enumerate(self._cat_rules):
             proc = r.get("process", ".*")
@@ -376,8 +382,11 @@ class TimeloggerApp(App):
         rows = summary_by_app(self.db_path, start=start, end=end)
         table = self.query_one("#app-table", DataTable)
         table.clear(columns=True)
-        table.add_columns("Process", "Window", "Category", "Time (h)",
-                          "Sessions")
+        table.add_column("Process", width=14)
+        table.add_column("Window", width=20)
+        table.add_column("Category", width=12)
+        table.add_column("Time (h)", width=10)
+        table.add_column("Sessions", width=8)
         self._app_data = list(rows)
         for i, r in enumerate(self._app_data):
             hours = round(r["total_seconds"] / 3600, 2) if r.get(
@@ -396,11 +405,25 @@ class TimeloggerApp(App):
         rows = daily_breakdown(self.db_path, start=start, end=end)
         table = self.query_one("#daily-table", DataTable)
         table.clear(columns=True)
-        table.add_columns("Day", "Category", "Time (h)")
+        table.add_column("Day", width=12)
+        table.add_column("Category", width=16)
+        table.add_column("Time (h)", width=10)
         for r in rows:
             hours = round(r["total_seconds"] / 3600, 2) if r.get(
                 "total_seconds") else 0
             table.add_row(r["day"], r["category"], str(hours))
+
+    def _load_totals(self):
+        start, end = self._compute_range()
+        rows = daily_total(self.db_path, start=start, end=end)
+        table = self.query_one("#totals-table", DataTable)
+        table.clear(columns=True)
+        table.add_column("Day", width=12)
+        table.add_column("Time (h)", width=10)
+        for r in rows:
+            hours = round(r["total_seconds"] / 3600, 2) if r.get(
+                "total_seconds") else 0
+            table.add_row(r["day"], str(hours))
 
     def _load_log(self):
         start, end = self._compute_range()

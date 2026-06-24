@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from logger.db import Database
 from tui.queries import (
     daily_breakdown,
+    daily_total,
     raw_entries,
     summary_by_app,
     summary_by_category,
@@ -63,6 +64,21 @@ def test_daily_breakdown():
         _seed_test_db(path)
         rows = daily_breakdown(path, days=365)
         assert len(rows) > 0
+    finally:
+        os.unlink(path)
+
+
+def test_daily_total():
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        path = f.name
+    try:
+        _seed_test_db(path)
+        rows = daily_total(path, days=365)
+        assert len(rows) > 0
+        for r in rows:
+            assert "day" in r
+            assert "total_seconds" in r
+            assert r["total_seconds"] >= 0
     finally:
         os.unlink(path)
 
