@@ -1,0 +1,18 @@
+[Unit]
+Description=timelogger — Automatic time logging daemon
+Documentation=https://github.com/user/timelogger
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/share/timelogger/venv/bin/python -m logger
+Restart=on-failure
+RestartSec=10
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=%h/.Xauthority
+Environment=XDG_CONFIG_HOME=%h/.config
+Environment=XDG_DATA_HOME=%h/.local/share
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=default.target

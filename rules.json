@@ -1,0 +1,20 @@
+[
+    {"pattern": ".*", "process": ".*vim.*", "category": "coding"},
+    {"pattern": ".*", "process": ".*code.*", "category": "coding"},
+    {"pattern": ".*", "process": ".*python.*", "category": "coding"},
+    {"pattern": ".*", "process": ".*node.*", "category": "coding"},
+    {"pattern": ".*", "process": ".*gcc.*", "category": "coding"},
+    {"pattern": ".*", "process": ".*make.*", "category": "coding"},
+    {"pattern": ".*", "process": ".*zsh.*", "category": "coding"},
+    {"pattern": ".*", "process": ".*codium.*", "category": "coding"},
+    {"pattern": ".*", "process": ".*bash.*", "category": "coding"},
+    {"pattern": ".*", "process": ".*gnome-terminal.*", "category": "coding"},
+    {"pattern": ".*", "process": ".*firefox.*", "category": "browsing"},
+    {"pattern": ".*", "process": ".*brave.*", "category": "browsing"},
+    {"pattern": ".*", "process": ".*chrome.*", "category": "browsing"},
+    {"pattern": ".*", "process": ".*slack.*", "category": "communication"},
+    {"pattern": ".*", "process": ".*discord.*", "category": "communication"},
+    {"pattern": ".*", "process": ".*signal.*", "category": "communication"},
+    {"pattern": ".*", "process": ".*telegram.*", "category": "communication"},
+    {"pattern": ".*", "process": ".*spotify.*", "category": "music"}
+]

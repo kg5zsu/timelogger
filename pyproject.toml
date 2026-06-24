@@ -1,0 +1,16 @@
+[project]
+name = "timelogger"
+version = "0.1.0"
+description = "TUI tool for automatic Linux time logging and reporting"
+requires-python = ">=3.8"
+readme = "README.md"
+authors = [{name = "Your Name", email = "your@email.com"}]
+dependencies = [
+    "pywinctl>=0.3.13",
+    "psutil",
+    "textual[dev]>=0.44",
+    "rich>=13.0",
+    "python-dateutil"
+]
+[tool.setuptools.packages.find]
+include = ["logger*", "tui*", "tests*"]

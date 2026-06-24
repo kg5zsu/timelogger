@@ -1,0 +1,6 @@
+{
+    "poll_interval": 5,
+    "db_path": "~/.local/share/timelogger/usage.db",
+    "retention_days": 90,
+    "merge_window": 60
+}

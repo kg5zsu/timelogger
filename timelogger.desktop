@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=timelogger
+Comment=Time tracking dashboard — view and export activity logs
+Exec=@VENV_DIR@/bin/python -m tui
+Icon=utilities-log-viewer
+Terminal=true
+Categories=Utility;Office;
+Keywords=time;tracking;log;

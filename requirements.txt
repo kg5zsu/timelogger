@@ -1,0 +1,5 @@
+pywinctl>=0.3.13
+psutil
+textual[dev]>=0.44
+rich>=13.0
+python-dateutil

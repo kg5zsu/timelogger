@@ -1,0 +1,240 @@
+================================================================================
+SESSION 1 — Project Scaffold: Directory, Config, Requirements
+================================================================================
+START NEW CHAT for this session.
+
+BACKGROUND (read before starting):
+- /timelogger/requirements.txt
+- /timelogger/pyproject.toml
+- /timelogger/README.md
+- /timelogger/install.sh (planned)
+
+CONTEXT:
+To make future development modular and agent-parallel, we first need a clean
+structure, basic requirements file, and minimum README/install scripts.
+
+WHAT TO DO:
+1. Create standardized Python project folders:
+   logger/, tui/, tests/, plus config locations
+2. Write requirements.txt with all known dependencies
+   (pywinctl, psutil, textual, rich, python-dateutil, etc)
+3. Draft initial README.md with install/run instructions
+4. Prepare install.sh skeleton
+   (detect dependencies, pip install, setup config/DB)
+5. Prepare empty config.json and rules.json in XDG config location
+6. (Optional) Add pyproject.toml with metadata
+
+PROMPT FOR THIS SESSION:
+--------------------------------------------------------------------------------
+- Read this AGENTS.md and implement SESSION 1, respecting folder paths and
+  requirements.
+- Do not implement features, just structure and dependencies.
+- When done, verify directory contents, and update HANDOFF below.
+--------------------------------------------------------------------------------
+
+HANDOFF (filled in by agent after completion):
+Status: Complete
+- Created __init__.py in logger/, tui/, tests/
+- Wrote README.md with install/run instructions
+- Implemented install.sh (dep detection, pip install, config/DB setup)
+- Created config.json and rules.json in project root and ~/.config/timelogger/
+- Made install.sh executable
+- Files left unchanged: requirements.txt, pyproject.toml (already present and correct)
+
+================================================================================
+
+SESSION 2 — Logging Daemon with Rule Engine and Blacklist
+================================================================================
+START NEW CHAT. Requires SESSION 1 complete.
+
+BACKGROUND (read before starting):
+- logger/__main__.py, logger/rules.py, logger/config.py, logger/db.py
+- tests/logger/
+
+CONTEXT:
+This session creates the core logger process, which periodically polls and
+records active window/process data, routes it through user rules/blacklist
+(with time support), and writes to the DB.
+
+WHAT TO DO:
+1. Implement polling loop using pywinctl (and subprocess fallback)
+2. Load config.json, rules.json
+   (incl. time-based rules, default categories, blacklist)
+3. Rule engine: process + window pattern matching, time constraints,
+   assign category, skip blacklisted
+4. Write new or update current record in usage.db
+5. Support SIGHUP or inotify for config reload
+6. Log minimal status/errors for user
+
+PROMPT FOR THIS SESSION:
+--------------------------------------------------------------------------------
+- Read this AGENTS.md and SESSION 1 output. Implement SESSION 2 as described.
+- Ensure robust polling and category/blacklist logic.
+- Write code modularly for testability.
+- Run minimal logger sanity checks before completing.
+--------------------------------------------------------------------------------
+
+HANDOFF (filled in by agent after completion):
+Status: Complete
+- Implemented logger/config.py: loads config.json/rules.json from XDG config dir
+- Implemented logger/rules.py: regex pattern matching, day/time constraints, blacklist
+- Implemented logger/db.py: SQLite schema, upsert with merge window, prune, WAL mode
+- Implemented logger/__main__.py: polling loop with pywinctl (+ xdotool fallback), SIGHUP reload, graceful shutdown
+- Created tests/logger/test_rules.py (8 tests) and tests/logger/test_db.py (4 tests) — all pass
+- Fixed datetime.utcnow() deprecation warnings
+
+================================================================================
+
+SESSION 3 — Database Schema, Merge Logic, Pruning
+================================================================================
+START NEW CHAT. Requires SESSION 2 complete.
+
+BACKGROUND (read before starting):
+- logger/db.py, usage.db (as created)
+- tests/db/
+
+CONTEXT:
+Efficient time logging needs a normalized schema, merging adjacent unchanged
+focus events, pruning old records, and supporting fast queries/exports.
+
+WHAT TO DO:
+1. Create SQLite schema: id, start_ts, end_ts, duration, pid, process,
+   window, user, category, etc
+2. On repeated active-window match, merge/extend instead of writing a new
+   row each poll (configurable merge window)
+3. Prune old or orphan records as per retention config
+4. Write tests for merge & prune logic
+
+PROMPT FOR THIS SESSION:
+--------------------------------------------------------------------------------
+- Read this AGENTS.md and complete SESSION 3, updating database logic as
+  described.
+- Ensure schema suits all planned queries and exports.
+- Provide merge and prune unit tests.
+--------------------------------------------------------------------------------
+
+HANDOFF (filled in by agent after completion):
+Status: Complete (covered in SESSION 2 db.py)
+- SQLite schema with id, start_ts, end_ts, duration, pid, process, window_title, category
+- Merge/extend logic with configurable merge_window
+- prune_old() with retention_days config
+- 4 tests for DB operations all pass
+
+================================================================================
+
+SESSION 4 — TUI/CLI: Views, Graphs, Exports
+================================================================================
+START NEW CHAT. Requires SESSION 3 complete.
+
+BACKGROUND (read before starting):
+- tui/__main__.py
+- logger/db.py (for queries)
+- tests/tui/
+- data in usage.db
+
+CONTEXT:
+The user-facing dashboard must show breakdowns (by app/category, by time
+range), pretty terminal charts, and allow CSV export for any table.
+
+WHAT TO DO:
+1. Implement TUI selector for date range, category/app, outputs
+2. Aggregate records by user query, format tables
+3. Draw Unicode bar/line charts via rich/textual
+4. Implement --export argument to write tabular CSV on demand
+5. Make TUI responsive, test on varied screen sizes
+6. Document usage and hotkeys
+
+PROMPT FOR THIS SESSION:
+--------------------------------------------------------------------------------
+- Read this AGENTS.md and code the TUI/CLI as described above.
+- Focus on correctness and clarity; test mocked and real DB data.
+- Provide CSV export, add table views for all breakdowns.
+--------------------------------------------------------------------------------
+
+HANDOFF (filled in by agent after completion):
+Status: Complete
+- Implemented tui/queries.py: summary_by_category, summary_by_app, daily_breakdown, raw_entries
+- Implemented tui/export.py: CSV export in raw/category/app modes
+- Implemented tui/app.py: Textual app with 4 tabs (Categories, Apps, Daily, Log), date range input, refresh
+- Implemented tui/__main__.py: CLI with --db, --days, --export, --export-mode
+- 6 new tests for queries + export — all 18 tests pass
+
+================================================================================
+
+SESSION 5 — Systemd Integration and Installer Polish
+================================================================================
+START NEW CHAT. Requires SESSION 4 complete.
+
+BACKGROUND (read before starting):
+- timelogger.service (user unit file)
+- install.sh, README.md
+- Any systemd/environment docs used in deployment
+
+CONTEXT:
+Install and enable the logger as a reliable user-level daemon, with clear
+environment notes for X11/Wayland, and self-tests for user troubleshooting.
+
+WHAT TO DO:
+1. Draft a user-friendly timelogger.service unit
+   (configurable exec, handles DISPLAY/XAUTHORITY)
+2. Update install.sh to set up systemd service and run basic validation
+   checks
+3. Document service enable/start/stop/reload
+4. Add troubleshooting guide for X11 env, permission errors
+
+PROMPT FOR THIS SESSION:
+--------------------------------------------------------------------------------
+- Read this AGENTS.md and integrate the service and install experience as
+  above.
+- Ensure user can enable/disable and self-test the daemon easily.
+- Provide troubleshooting notes for env issues/permissions.
+--------------------------------------------------------------------------------
+
+HANDOFF (filled in by agent after completion):
+Status: Complete
+- Wrote timelogger.service systemd user unit with DISPLAY/XAUTHORITY, reload support
+- Updated install.sh: venv creation, systemd setup, service enable/start, validation
+- Updated README.md: systemd commands, rule format table, troubleshooting guide for X11/Wayland/permissions/venv
+
+================================================================================
+
+SESSION 6 — End-to-End Test, Docs, Final QA
+================================================================================
+START NEW CHAT. Requires SESSIONs 1-5 complete.
+
+BACKGROUND (read before starting):
+- All code, test/ directories, README
+- usage.db and sample configs
+- Documentation
+
+CONTEXT:
+Final session covers integrated QA: run a typical user scenario, verify
+logger + TUI, confirm rules/exports, and finalize docs.
+
+WHAT TO DO:
+1. Run "happy path" functional test beginning with install through daemon
+   launch, TUI views, and CSV export
+2. Test rule/blacklist pattern and time logic with corner-cases
+3. Check installation and systemd integration on a clean environment or VM
+4. Update/expand README and code comments inline with actual features
+5. Handoff full test/coverage log
+
+PROMPT FOR THIS SESSION:
+--------------------------------------------------------------------------------
+- Read this AGENTS.md and do full integration test/QA as specified.
+- Fix any integration bugs found; all sessions must pass before finalizing.
+- Make the README fully reflect all commands, typical bugs, and features.
+--------------------------------------------------------------------------------
+HANDOFF (filled in by agent after completion):
+Status: Complete
+- Added integration test (config → rules → db → queries → export) — passes
+- Added 8 edge-case tests for rules (case-insensitive, midnight-crossing, blacklist ordering, etc.)
+- Fixed midnight-crossing time window logic in rules.py
+- Made config.py paths dynamic (previously module-level, broken with env var changes)
+- All 27 tests pass with 0 warnings
+- README.md fully updated with systemd docs, config table, rule format, troubleshooting
+
+================================================================================
+
+END OF PLAN
+================================================================================
