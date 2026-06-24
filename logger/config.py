@@ -1,6 +1,9 @@
 import json
+import logging
 import os
 import time
+
+log = logging.getLogger("timelogger.config")
 
 
 def _config_dir():
@@ -42,11 +45,32 @@ def _load_json(path, default):
         return default
 
 
+def _allowed_data_dir():
+    base = os.environ.get("XDG_DATA_HOME") or os.path.join(
+        os.path.expanduser("~"), ".local", "share"
+    )
+    return os.path.realpath(os.path.join(base, "timelogger"))
+
+
+def _validate_db_path(path):
+    """Return path if it's inside the allowed data dir, else log + return default."""
+    allowed = _allowed_data_dir()
+    resolved = os.path.realpath(path)
+    if not resolved.startswith(allowed + os.sep) and resolved != allowed:
+        log.warning(
+            "db_path %r is outside allowed directory %r; using default",
+            path,
+            allowed,
+        )
+        return _default_config()["db_path"]
+    return path
+
+
 def load_config():
     cfg = _load_json(_config_path(), {})
     merged = dict(_default_config())
     merged.update(cfg)
-    merged["db_path"] = os.path.expanduser(merged["db_path"])
+    merged["db_path"] = _validate_db_path(os.path.expanduser(merged["db_path"]))
     return merged
 
 

@@ -39,7 +39,7 @@ if [ ! -f "$CONFIG_DIR/config.json" ]; then
     if [ -f "$REPO_DIR/config.json" ]; then
         cp "$REPO_DIR/config.json" "$CONFIG_DIR/config.json"
     else
-        cat > "$CONFIG_DIR/config.json" <<'EOF'
+        cat > "$CONFIG_DIR/config.json" <<EOF
 {
     "poll_interval": 5,
     "db_path": "$DATA_DIR/usage.db",

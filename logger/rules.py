@@ -1,5 +1,8 @@
+import logging
 import re
 from datetime import datetime
+
+log = logging.getLogger("timelogger.rules")
 
 
 def _day_match(days, now):
@@ -28,9 +31,17 @@ def match_window(rules, title, process_name, now=None):
     for rule in rules:
         pattern = rule.get("pattern", ".*")
         proc_pat = rule.get("process", ".*")
-        if not re.search(pattern, title, re.IGNORECASE):
+        try:
+            if not re.search(pattern, title, re.IGNORECASE):
+                continue
+        except re.error:
+            log.warning("Invalid regex pattern in rule (skipping): %r", pattern)
             continue
-        if not re.search(proc_pat, process_name, re.IGNORECASE):
+        try:
+            if not re.search(proc_pat, process_name, re.IGNORECASE):
+                continue
+        except re.error:
+            log.warning("Invalid regex process pattern in rule (skipping): %r", proc_pat)
             continue
         if not _day_match(rule.get("days"), now):
             continue

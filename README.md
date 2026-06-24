@@ -115,6 +115,18 @@ systemctl --user disable timelogger
 - textual, rich (TUI framework)
 - python-dateutil (date handling)
 
+## Privacy
+
+Window titles and process names are recorded verbatim in plaintext SQLite at the configured `db_path` (`~/.local/share/timelogger/usage.db` by default). Anyone with read access to that file can see all logged activity.
+
+To suppress logging for a sensitive application, add a blacklist rule to `~/.config/timelogger/rules.json`:
+
+```json
+{"pattern": ".*", "process": ".*keepass.*", "blacklist": true}
+```
+
+Blacklisted windows are never written to the database.
+
 ## Troubleshooting
 
 ### No window data being logged
